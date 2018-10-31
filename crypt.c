@@ -76,14 +76,13 @@ static int __init cryptctl_init(void){
         return -1;
 }
 
-static int __exit cryptctl_exit(void){
+static void __exit cryptctl_exit(void){
     cdev_del(&cryptctl);
     device_destroy(cryptmain, main_dev);
     class_unregister(CryptClass);
     class_destroy(CryptClass);
     unregister_chrdev_region(main_dev, 1);
     printk(KERN_DEBUG "Exit Success\n");
-    return 0;
 }
 
 module_init(cryptctl_init);
