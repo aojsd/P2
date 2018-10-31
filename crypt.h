@@ -1,6 +1,6 @@
 #ifndef _crypt_h
 #define _crypt_h
 
-extern int crypt_major = 0;
+extern int crypt_major;
 
 #endif

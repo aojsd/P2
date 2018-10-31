@@ -7,7 +7,7 @@
 #include <linux/types.h>
 #include <linux/kdev_t.h>
 #include <linux/cdev.h>
-#include <crypt.h>              // allows dynamic major number to be shared
+#include "crypt.h"              // allows dynamic major number to be shared
 #define DEVICE_NAME "cryptctl"
 
 dev_t main_dev;
@@ -25,9 +25,9 @@ struct file_operations crypt_fops = {
     .ioctl = crypt_ioctl;
     .open = crypt_open;
     .release = crypt_release;
-}
+};
 
-static int _ _init cryptctl_init(void){
+static int __init cryptctl_init(void){
     // dynamically allocate the major number, cryptctl will have minor number 0
     int result = alloc_chrdev_region(&main_dev, 0, 1, "cryptctl");
     crypt_major = MAJOR(main_dev);
@@ -49,10 +49,11 @@ static int _ _init cryptctl_init(void){
     return 0;
 }
 
-static int _ _exit cryptctl_exit(void){
+static int __exit cryptctl_exit(void){
     cdev_del(&cryptctl);
     unregister_chrdev_region(main_dev, 1);
     printk(KERN_DEBUG "Exit Success\n");
+    return 0;
 }
 
 module_init(cryptctl_init);
