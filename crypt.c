@@ -66,7 +66,7 @@ static int __init cryptctl_init(void){
 
     ERR_DEVICE_2:
         cdev_del(&cryptctl);
-        device_destroy(cryptmain);
+        device_destroy(cryptmain, main_dev);
     ERR_DEVICE_1:
         class_unregister(CryptClass);
         class_destroy(CryptClass);
@@ -78,7 +78,7 @@ static int __init cryptctl_init(void){
 
 static int __exit cryptctl_exit(void){
     cdev_del(&cryptctl);
-    device_destroy(cryptmain);
+    device_destroy(cryptmain, main_dev);
     class_unregister(CryptClass);
     class_destroy(CryptClass);
     unregister_chrdev_region(main_dev, 1);
