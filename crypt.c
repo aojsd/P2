@@ -13,7 +13,6 @@
 dev_t main_dev;
 struct cdev cryptctl;
 struct class *CryptClass;
-struct device *cryptmain;
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Michael Wu");
@@ -46,15 +45,14 @@ static int __init cryptctl_init(void){
     }
 
     // create device
-    cryptmain = device_create(CryptClass, NULL, main_dev, NULL, "cryptctl");
-    if(IS_ERR(cryptmain)){
+    if(device_create(CryptClass, NULL, main_dev, NULL, "cryptctl") == NULL){
         printk(KERN_NOTICE "Cryptctl: Error creating device\n");
         goto ERR_DEVICE_1;
     }
 
     // add cryptctl as a device driver
     cdev_init(&cryptctl, &crypt_fops);
-    cryptctl->owner = THIS_MODULE;
+    cryptctl.owner = THIS_MODULE;
     int err = cdev_add(&cryptctl, main_dev, 1);
     if(err < 0){
         printk(KERN_DEBUG "Cryptctl: Error adding cryptctl\n");
@@ -66,7 +64,7 @@ static int __init cryptctl_init(void){
 
     ERR_DEVICE_2:
         cdev_del(&cryptctl);
-        device_destroy(cryptmain, main_dev);
+        device_destroy(CryptClass, main_dev);
     ERR_DEVICE_1:
         class_unregister(CryptClass);
         class_destroy(CryptClass);
@@ -78,7 +76,7 @@ static int __init cryptctl_init(void){
 
 static void __exit cryptctl_exit(void){
     cdev_del(&cryptctl);
-    device_destroy(cryptmain, main_dev);
+    device_destroy(CryptClass, main_dev);
     class_unregister(CryptClass);
     class_destroy(CryptClass);
     unregister_chrdev_region(main_dev, 1);
