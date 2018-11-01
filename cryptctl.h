@@ -1,7 +1,7 @@
-#include <linux/ioctl.h>
-
 #ifndef _cryptctl_h
 #define _cryptctl_h
+
+#include <linux/ioctl.h>
 
 #define KEY_MAX 256
 typedef struct id_key{

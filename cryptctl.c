@@ -7,6 +7,8 @@
 #include <linux/types.h>
 #include <linux/kdev_t.h>
 #include <linux/cdev.h>
+#include <linux/ioctl.h>
+#include <linux/malloc.h>
 #include "cryptctl.h"              // allows dynamic major number to be shared
 
 dev_t main_dev;
