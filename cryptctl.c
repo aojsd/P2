@@ -32,31 +32,31 @@ int ctl_release(struct inode *inode, struct file *filp){
     return 0;
 }
 
-int create_driver(char* key){
+long create_driver(char* key){
     return 0;
 }
 
-int delete_driver(int ID){
+long delete_driver(int ID){
     return 0;
 }
 
-int change_key(id_key *change){
+long change_key(id_key *change){
     return 0;
 }
 
-int ctl_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
+long ctl_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
     int del;
     id_key *change;
     char key[KEY_MAX];
     switch(cmd){
         case CTL_CREATE_DRIVER: // parameter is key, return driver ID
-            copy_from_user(key, (char*)arg, sizeof(key));
+            copy_from_user(key, (char*)arg, KEY_MAX);
             return create_driver(key);
         case CTL_DELETE_DRIVER: // parameter is pointer to driver ID to delete
             get_user(del, (int*) arg);
             return delete_driver(del);
         case CTL_CHANGE_KEY: // parameter is pointer to id_key struct
-            copy_from_user(&change, (id_key*) arg, sizeof(id_key));
+            copy_from_user(change, (id_key*) arg, sizeof(id_key));
             return change_key(change);
     }
     return -1;
