@@ -9,19 +9,30 @@
 #include <linux/cdev.h>
 #include <linux/ioctl.h>
 #include <linux/slab.h>
-#include "cryptctl.h"              // allows dynamic major number to be shared
-
-dev_t main_dev;
-struct cdev cryptctl;
-struct class *CryptClass;
-int crypt_major;
-int ctlOpen = 0;
-id_key *change;
-char key[KEY_MAX];
+#include <linux/list.h>
+#include <linux/string.h>
+#include "cryptctl.h"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Michael Wu");
 MODULE_DESCRIPTION("OS Assignment 2: Encrypt/Decrypt Pseudo-Device Driver");
+
+typedef struct cryptPair{
+    int id;
+    unsigned int key_length;
+    struct cdev encrypt;
+    struct cdev decrypt;
+    char key[KEY_MAX];
+    struct list_head plist;
+} c_pair;
+
+dev_t main_dev;             // major and minor numbers of the ctl driver
+struct cdev cryptctl;       // ctl driver
+struct class *CryptClass;   // class for all drivers
+int crypt_major;            // major number for all drivers
+int ctlOpen = 0;            // checks whether cryptctl is open or not (basic synchronization)
+int pair_ID = 0;            // moves to next pair ID when creating encrypt/decrypt pairs
+LIST_HEAD(pair_list);       // kernel implementation of circular linked list
 
 int ctl_open(struct inode *inode, struct file *filp){
     if(ctlOpen > 0);
@@ -35,6 +46,21 @@ int ctl_release(struct inode *inode, struct file *filp){
 }
 
 long create_driver(char* key){
+    // dynamically allocate memory for driver pair
+    c_pair *pair = (c_pair*) kmalloc(sizeof(c_pair), GFP_KERNEL);
+    
+    // set pair ID, key length, and key
+    pair->id = pair_ID++;
+    pair->key_length = (unsigned int)strlen(key);
+    strcpy(pair-key, key);
+
+    // create device drivers
+
+    
+    // init list_head and add to linked list
+    INIT_LIST_HEAD(&pair->plist);
+    list_add(&pair->plist, &pair_list);
+    
     return 0;
 }
 
@@ -47,6 +73,9 @@ long change_key(id_key *change){
 }
 
 long ctl_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
+    id_key change;
+    char key[KEY_MAX];
+    
     int del;
     switch(cmd){
         case CTL_CREATE_DRIVER: // parameter is key, return driver ID
@@ -56,8 +85,8 @@ long ctl_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
             get_user(del, (int*) arg);
             return delete_driver(del);
         case CTL_CHANGE_KEY: // parameter is pointer to id_key struct
-            copy_from_user(change, (id_key*) arg, sizeof(id_key));
-            return change_key(change);
+            copy_from_user(&change, (id_key*) arg, sizeof(id_key));
+            return change_key(&change);
     }
     return -1;
 }
