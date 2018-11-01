@@ -6,7 +6,7 @@
 #define KEY_MAX 256
 typedef struct id_key{
     int id;
-    int key_length;
+    unsigned int key_length;
     char key[KEY_MAX];
 } id_key;
 
