@@ -3,7 +3,7 @@
 #ifndef _cryptctl_h
 #define _cryptctl_h
 
-#define KEY_MAX
+#define KEY_MAX 256
 typedef struct id_key{
     int id;
     char key[KEY_MAX];
