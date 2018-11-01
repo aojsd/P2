@@ -52,7 +52,7 @@ long create_driver(char* key){
     // set pair ID, key length, and key
     pair->id = pair_ID++;
     pair->key_length = (unsigned int)strlen(key);
-    strcpy(pair-key, key);
+    strcpy(pair->key, key);
 
     // create device drivers
 
