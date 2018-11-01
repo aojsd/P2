@@ -16,6 +16,8 @@ struct cdev cryptctl;
 struct class *CryptClass;
 int crypt_major;
 int ctlOpen = 0;
+id_key *change;
+char key[KEY_MAX];
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Michael Wu");
@@ -46,8 +48,6 @@ long change_key(id_key *change){
 
 long ctl_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
     int del;
-    id_key *change;
-    char key[KEY_MAX];
     switch(cmd){
         case CTL_CREATE_DRIVER: // parameter is key, return driver ID
             copy_from_user(key, (char*)arg, KEY_MAX);
