@@ -3,7 +3,7 @@
 #include <linux/device.h>
 #include <linux/kernel.h>
 #include <linux/fs.h>
-#include <asm/uaccess.h>
+#include <linux/uaccess.h>
 #include <linux/types.h>
 #include <linux/kdev_t.h>
 #include <linux/cdev.h>
@@ -19,23 +19,13 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Michael Wu");
 MODULE_DESCRIPTION("OS Assignment 2: Encrypt/Decrypt Pseudo-Device Driver");
 
-// define file operations
-struct file_operations cryptctl_fops = {
-    .owner = THIS_MODULE,
-    //.read = crypt_read,
-    //.write = crypt_write,
-    .ioctl = ctl_ioctl,
-    .open = ctl_open,
-    .release = ctl_release,
-};
-
 int ctl_open(struct inode *inode, struct file *filp){
     if(ctlOpen > 0);
     ctlOpen++;
     return 0;
 }
 
-int ctl_release(struct inode *inode struct file *filp){
+int ctl_release(struct inode *inode, struct file *filp){
     ctlOpen--;
     return 0;
 }
@@ -64,11 +54,21 @@ int ctl_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, unsigned
             get_user(del, (int*) arg);
             return delete_driver(del);
         case CTL_CHANGE_KEY: // parameter is pointer to id_key struct
-            copy_from_user(&\change, (idkey*) arg, sizeof(id_key));
+            copy_from_user(&change, (id_key*) arg, sizeof(id_key));
             return change_key(change);
     }
-
+    return -1;
 }
+
+// define file operations
+struct file_operations cryptctl_fops = {
+    .owner = THIS_MODULE,
+    //.read = crypt_read,
+    //.write = crypt_write,
+    .ioctl = ctl_ioctl,
+    .open = ctl_open,
+    .release = ctl_release,
+};
 
 static int __init cryptctl_init(void){
     // dynamically allocate the major number, cryptctl will have minor number 0
