@@ -22,8 +22,8 @@ typedef struct cryptPair{
     unsigned int key_length;
     struct cdev encrypt;
     struct cdev decrypt;
-    char key[KEY_MAX];
     struct list_head plist;
+    char key[KEY_MAX];
 } c_pair;
 
 dev_t main_dev;             // major and minor numbers of the ctl driver
@@ -33,6 +33,61 @@ int crypt_major;            // major number for all drivers
 int ctlOpen = 0;            // checks whether cryptctl is open or not (basic synchronization)
 int pair_ID = 0;            // moves to next pair ID when creating encrypt/decrypt pairs
 LIST_HEAD(pair_list);       // kernel implementation of circular linked list
+
+int pair_open(struct inode *inode, struct file *filp){
+    // make it easier to find the key for encryption and decryption
+    c_pair *cpair = container_of(inode->i_cdev, c_pair, struct cdev);
+    filp->private_data = cpair;
+    return 0;
+}
+
+int pair_release(struct inode *inode, struct file *filp){
+    return 0;
+}
+
+ssize_t encrypt(struct file *filp, char __user *buff, size_t count, loff_t *offp){
+    // access device information
+    c_pair *cpair = filp->private_data;
+
+    // copy message to be encrypted from userspace
+    char* msg = (char*)kmalloc((int) count, GFP_KERNEL);
+    copy_from_user(msg, buff, count);
+
+    // encrypt message
+    int i; char keyChar;
+    for(i = 0; i < count; i++){
+        keyChar = key[i % key_length];
+        msg[i] = ' ' + (msg[i] + keyChar) % LETTERS;
+    }
+
+    // copy message back into userspace
+    copy_to_user(buff, msg, count);
+
+    // free allocated memory
+    kfree(msg);
+
+    return count;
+}
+
+ssize_t decrypt(struct file *filp, char __user *buff, size_t count, loff_t *offp){
+    c_pair *cpair = filp->private_data;
+
+    return count;
+}
+
+// file operations for encryption drivers
+struct file_operations e_fops = {
+    .open = pair_open,
+    .read = encrypt,
+    .release = pair_release,
+};
+
+// file operations for decryption drivers
+struct file_operations d_fops = {
+    .open = pair_open,
+    .read = decrypt,
+    .release = pair_release,
+}
 
 int ctl_open(struct inode *inode, struct file *filp){
     if(ctlOpen > 0);
@@ -75,15 +130,17 @@ long change_key(id_key *change){
 long ctl_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
     id_key change;
     char key[KEY_MAX];
-    
     int del;
+
     switch(cmd){
         case CTL_CREATE_DRIVER: // parameter is key, return driver ID
             copy_from_user(key, (char*)arg, KEY_MAX);
             return create_driver(key);
+
         case CTL_DELETE_DRIVER: // parameter is pointer to driver ID to delete
-            get_user(del, (int*) arg);
+            copy_from_user(&del, (int*) arg, sizeof(int));
             return delete_driver(del);
+
         case CTL_CHANGE_KEY: // parameter is pointer to id_key struct
             copy_from_user(&change, (id_key*) arg, sizeof(id_key));
             return change_key(&change);
