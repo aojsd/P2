@@ -146,12 +146,12 @@ long create_driver(char* key){
     strcpy(pair->key, key);
     
     // create device drivers
-    dev_t e_dev = , d_dev;                      // make device major and minor numbers
+    dev_t e_dev d_dev;                      // make device major and minor numbers
     e_dev = MKDEV(crypt_major, 2*pair_ID - 1);
     d_dev = MKDEV(crypt_major, 2*pair_ID);
 
     char *deviceID = "XX";                                  // make device names
-    sprintf(deviceID1, "%d%d", pair_ID / 10, pair_ID % 10);
+    sprintf(deviceID, "%d%d", pair_ID / 10, pair_ID % 10);
     e_name[12] = deviceID[0]; e_name[13] = deviceID[1];
     d_name[12] = deviceID[0]; d_name[13] = deviceID[1];
 
@@ -178,7 +178,7 @@ long create_driver(char* key){
 long delete_driver(int ID){
     // search list for driver pair
     c_pair *pair = NULL;
-    list_for_each_entry(ptr, &pair_list, plist){
+    list_for_each_entry(pair, &pair_list, plist){
         if(pair->id == ID)
             break;
     }
@@ -208,7 +208,7 @@ long delete_driver(int ID){
 long change_key(id_key *change){
     // search list for driver pair
     c_pair *pair = NULL;
-    list_for_each_entry(ptr, &pair_list, plist){
+    list_for_each_entry(pair, &pair_list, plist){
         if(pair->id == change->id)
             break;
     }
@@ -297,10 +297,10 @@ static int __init cryptctl_init(void){
         return -1;
 }
 
-void cleanup(){                 // delete any remaining device pairs
+void cleanup(void){                 // delete any remaining device pairs
     // hit every item of list
     c_pair *pair;
-    while(pair = list_first_entry_or_null(&pair_list, c_pair, plist) != NULL){
+    while(pair = (c_pair*)list_first_entry_or_null(&pair_list, c_pair, plist) != NULL){
         list_del(&pair->plist);    // remove pair from list
 
         // delete drivers from kernel
