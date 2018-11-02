@@ -60,15 +60,19 @@ int pair_release(struct inode *inode, struct file *filp){
 
 // read function for encrypt drivers, takes message in buff and encrypts it in place
 ssize_t encrypt(struct file *filp, char __user *buff, size_t count, loff_t *offp){
+    size_t i;
+    char keyChar;
+    c_pair *pair;
+    char *msg;
+
     // access device information
-    c_pair *cpair = filp->private_data;
+    cpair = filp->private_data;
 
     // copy message to be encrypted from userspace
-    char* msg = (char*)kmalloc((int) count, GFP_KERNEL);
+    msg = (char*)kmalloc((int) count, GFP_KERNEL);
     copy_from_user(msg, buff, count);
 
     // encrypt message
-    size_t i; char keyChar;
     for(i = 0; i < count; i++){
         keyChar = cpair->key[i % cpair->key_length];
         msg[i] = ' ' + (msg[i] + keyChar) % LETTERS;
@@ -85,15 +89,19 @@ ssize_t encrypt(struct file *filp, char __user *buff, size_t count, loff_t *offp
 
 // read function for decrypt drivers, takes encrypted message in buff and decrypts it in place
 ssize_t decrypt(struct file *filp, char __user *buff, size_t count, loff_t *offp){
+    size_t i;
+    char keyChar;
+    c_pair *pair;
+    char *msg;
+    
     // access device information
-    c_pair *cpair = filp->private_data;
+    cpair = filp->private_data;
 
     // copy message to be encrypted from userspace
-    char* msg = (char*)kmalloc((int) count, GFP_KERNEL);
+    msg = (char*)kmalloc((int) count, GFP_KERNEL);
     copy_from_user(msg, buff, count);
 
     // decrypt message
-    size_t i; char keyChar;
     for(i = 0; i < count; i++){
         keyChar = cpair->key[i % cpair->key_length];
         msg[i] = (msg[i] - ' ' - keyChar + 2*LETTERS) % LETTERS;
@@ -137,20 +145,23 @@ int ctl_release(struct inode *inode, struct file *filp){
 
 // called by ioctl, creates encrypt and decrypt drivers with the given key
 long create_driver(char* key){
+    dev_t e_dev, d_dev;
+    c_pair *pair;
+    char *deviceID;
+
     // dynamically allocate memory for driver pair
-    c_pair *pair = (c_pair*) kmalloc(sizeof(c_pair), GFP_KERNEL);
+    pair = (c_pair*) kmalloc(sizeof(c_pair), GFP_KERNEL);
     
     // set pair ID, key length, and key
     pair->id = pair_ID++;
     pair->key_length = (unsigned int)strlen(key);
     strcpy(pair->key, key);
     
-    // create device drivers
-    dev_t e_dev d_dev;                      // make device major and minor numbers
-    e_dev = MKDEV(crypt_major, 2*pair_ID - 1);
+    // create device drivers                  
+    e_dev = MKDEV(crypt_major, 2*pair_ID - 1);  // make device major and minor numbers
     d_dev = MKDEV(crypt_major, 2*pair_ID);
 
-    char *deviceID = "XX";                                  // make device names
+    deviceID = "XX";                                  // make device names
     sprintf(deviceID, "%d%d", pair_ID / 10, pair_ID % 10);
     e_name[12] = deviceID[0]; e_name[13] = deviceID[1];
     d_name[12] = deviceID[0]; d_name[13] = deviceID[1];
@@ -176,6 +187,8 @@ long create_driver(char* key){
 
 // called by ioctl, deletes driver pair of a given ID
 long delete_driver(int ID){
+    dev_t e_dev, d_dev;
+    
     // search list for driver pair
     c_pair *pair = NULL;
     list_for_each_entry(pair, &pair_list, plist){
@@ -185,7 +198,6 @@ long delete_driver(int ID){
     list_del(&pair->plist);    // remove pair from list
 
     // delete drivers from kernel
-    dev_t e_dev, d_dev;
     e_dev = pair->dev_encrypt.dev;
     d_dev = pair->dev_decrypt.dev;
 
@@ -300,7 +312,9 @@ static int __init cryptctl_init(void){
 void cleanup(void){                 // delete any remaining device pairs
     // hit every item of list
     c_pair *pair;
-    while(pair = (c_pair*)list_first_entry_or_null(&pair_list, c_pair, plist) != NULL){
+    while(!list_empty(&pair_list)){
+        pair = list_first_entry(&pair_list, c_pair, plist);
+
         list_del(&pair->plist);    // remove pair from list
 
         // delete drivers from kernel
