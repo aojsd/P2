@@ -17,6 +17,7 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Michael Wu");
 MODULE_DESCRIPTION("OS Assignment 2: Encrypt/Decrypt Pseudo-Device Driver");
 
+// represents a pair of encrypt and decrypt drivers
 typedef struct cryptPair{
     int id;
     unsigned int key_length;
@@ -26,6 +27,8 @@ typedef struct cryptPair{
     char key[KEY_MAX];
 } c_pair;
 
+
+// global variables
 dev_t main_dev;             // major and minor numbers of the ctl driver
 struct cdev cryptctl;       // ctl driver
 struct class *CryptClass;   // class for all drivers
@@ -33,23 +36,29 @@ int crypt_major;            // major number for all drivers
 int ctlOpen = 0;            // checks whether cryptctl is open or not (basic synchronization)
 int pair_ID = 0;            // moves to next pair ID when creating encrypt/decrypt pairs
 LIST_HEAD(pair_list);       // kernel implementation of circular linked list
+char *e_name = "cryptEncryptXX";
+char *d_name = "cryptDecryptXX";
 
+// open function for encrypt drivers
 int e_open(struct inode *inode, struct file *filp){
     // make it easier to find the key for encryption and decryption
     filp->private_data = container_of(inode->i_cdev, c_pair, dev_encrypt);
     return 0;
 }
 
+// open function for encrypt drivers
 int d_open(struct inode *inode, struct file *filp){
     // make it easier to find the key for encryption and decryption
     filp->private_data = container_of(inode->i_cdev, c_pair, dev_decrypt);
     return 0;
 }
 
+// release function for both encrypt and decrypt drivers
 int pair_release(struct inode *inode, struct file *filp){
     return 0;
 }
 
+// read function for encrypt drivers, takes message in buff and encrypts it in place
 ssize_t encrypt(struct file *filp, char __user *buff, size_t count, loff_t *offp){
     // access device information
     c_pair *cpair = filp->private_data;
@@ -59,7 +68,7 @@ ssize_t encrypt(struct file *filp, char __user *buff, size_t count, loff_t *offp
     copy_from_user(msg, buff, count);
 
     // encrypt message
-    int i; char keyChar;
+    size_t i; char keyChar;
     for(i = 0; i < count; i++){
         keyChar = cpair->key[i % cpair->key_length];
         msg[i] = ' ' + (msg[i] + keyChar) % LETTERS;
@@ -74,6 +83,7 @@ ssize_t encrypt(struct file *filp, char __user *buff, size_t count, loff_t *offp
     return count;
 }
 
+// read function for decrypt drivers, takes encrypted message in buff and decrypts it in place
 ssize_t decrypt(struct file *filp, char __user *buff, size_t count, loff_t *offp){
     // access device information
     c_pair *cpair = filp->private_data;
@@ -83,7 +93,7 @@ ssize_t decrypt(struct file *filp, char __user *buff, size_t count, loff_t *offp
     copy_from_user(msg, buff, count);
 
     // decrypt message
-    int i; char keyChar;
+    size_t i; char keyChar;
     for(i = 0; i < count; i++){
         keyChar = cpair->key[i % cpair->key_length];
         msg[i] = (msg[i] - ' ' - keyChar + 2*LETTERS) % LETTERS;
@@ -112,17 +122,20 @@ struct file_operations d_fops = {
     .release = pair_release,
 };
 
+// open function for cryptctl
 int ctl_open(struct inode *inode, struct file *filp){
     if(ctlOpen > 0);
     ctlOpen++;
     return 0;
 }
 
+// release function for cryptctl
 int ctl_release(struct inode *inode, struct file *filp){
     ctlOpen--;
     return 0;
 }
 
+// called by ioctl, creates encrypt and decrypt drivers with the given key
 long create_driver(char* key){
     // dynamically allocate memory for driver pair
     c_pair *pair = (c_pair*) kmalloc(sizeof(c_pair), GFP_KERNEL);
@@ -131,10 +144,29 @@ long create_driver(char* key){
     pair->id = pair_ID++;
     pair->key_length = (unsigned int)strlen(key);
     strcpy(pair->key, key);
-
-    // create device drivers
-
     
+    // create device drivers
+    dev_t e_dev = , d_dev;                      // make device major and minor numbers
+    e_dev = MKDEV(crypt_major, 2*pair_ID - 1);
+    d_dev = MKDEV(crypt_major, 2*pair_ID);
+
+    char *deviceID = "XX";                                  // make device names
+    sprintf(deviceID1, "%d%d", pair_ID / 10, pair_ID % 10);
+    e_name[12] = deviceID[0]; e_name[13] = deviceID[1];
+    d_name[12] = deviceID[0]; d_name[13] = deviceID[1];
+
+    register_chrdev_region(e_dev, 1, e_name);       // register device numbers
+    register_chrdev_region(d_dev, 1, d_name);
+    
+    device_create(CryptClass, NULL, e_dev, NULL, e_name);   // create device nodes
+    device_create(CryptClass, NULL, d_dev, NULL, d_name);
+
+    cdev_init(&pair->dev_encrypt, &e_fops);         // initialize character drivers
+    cdev_init(&pair->dev_decrypt, &d_fops);
+
+    cdev_add(&pair->dev_encrypt, e_dev, 1);         // make drivers visible to kernel
+    cdev_add(&pair->dev_decrypt, d_dev, 1);
+
     // init list_head and add to linked list
     INIT_LIST_HEAD(&pair->plist);
     list_add(&pair->plist, &pair_list);
@@ -142,14 +174,55 @@ long create_driver(char* key){
     return 0;
 }
 
+// called by ioctl, deletes driver pair of a given ID
 long delete_driver(int ID){
+    // search list for driver pair
+    c_pair *pair = NULL;
+    list_for_each_entry(ptr, &pair_list, plist){
+        if(pair->id == ID)
+            break;
+    }
+    list_del(&pair->plist);    // remove pair from list
+
+    // delete drivers from kernel
+    dev_t e_dev, d_dev;
+    e_dev = pair->dev_encrypt.dev;
+    d_dev = pair->dev_decrypt.dev;
+
+    cdev_del(&pair->dev_decrypt);    // delete cdev objects
+    cdev_del(&pair->dev_encrypt);
+    
+    device_destroy(CryptClass, e_dev);    // delete device node
+    device_destroy(CryptClass, d_dev);
+
+    unregister_chrdev_region(e_dev, 1);    // unregister device numbers
+    unregister_chrdev_region(d_dev, 1);
+
+    // free memory of driver pair
+    kfree(pair);
+
     return 0;
 }
 
+// called by ioctl, changes key of a driver pair given their id
 long change_key(id_key *change){
+    // search list for driver pair
+    c_pair *pair = NULL;
+    list_for_each_entry(ptr, &pair_list, plist){
+        if(pair->id == change->id)
+            break;
+    }
+
+    // update key
+    strcpy(pair->key, change->key);
+
+    // update key_length
+    pair->key_length = change->key_length;
+
     return 0;
 }
 
+// ioctl function for cryptctl
 long ctl_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
     id_key change;
     char key[KEY_MAX];
@@ -189,7 +262,7 @@ static int __init cryptctl_init(void){
     }
 
     // create device class
-    CryptClass = class_create(THIS_MODULE, "CS416 P2");
+    CryptClass = class_create(THIS_MODULE, "Crypt");
     if(IS_ERR(CryptClass)){
         printk(KERN_NOTICE "Cryptctl: Error creating class\n");
         goto ERR_CLASS;
@@ -204,8 +277,7 @@ static int __init cryptctl_init(void){
     // add cryptctl as a device driver
     cdev_init(&cryptctl, &cryptctl_fops);
     cryptctl.owner = THIS_MODULE;
-    int err = cdev_add(&cryptctl, main_dev, 1);
-    if(err < 0){
+    if(cdev_add(&cryptctl, main_dev, 1) < 0){
         printk(KERN_DEBUG "Cryptctl: Error adding cryptctl\n");
         goto ERR_DEVICE_2;
     }
@@ -225,7 +297,33 @@ static int __init cryptctl_init(void){
         return -1;
 }
 
+void cleanup(){                 // delete any remaining device pairs
+    // hit every item of list
+    c_pair *pair;
+    while(pair = list_first_entry_or_null(&pair_list, c_pair, plist) != NULL){
+        list_del(&pair->plist);    // remove pair from list
+
+        // delete drivers from kernel
+        dev_t e_dev, d_dev;
+        e_dev = pair->dev_encrypt.dev;
+        d_dev = pair->dev_decrypt.dev;
+
+        cdev_del(&pair->dev_decrypt);    // delete cdev objects
+        cdev_del(&pair->dev_encrypt);
+    
+        device_destroy(CryptClass, e_dev);    // delete device node
+        device_destroy(CryptClass, d_dev);
+
+        unregister_chrdev_region(e_dev, 1);    // unregister device numbers
+        unregister_chrdev_region(d_dev, 1);
+
+        // free memory of driver pair
+        kfree(pair);
+    }
+}
+
 static void __exit cryptctl_exit(void){
+    cleanup();
     cdev_del(&cryptctl);
     device_destroy(CryptClass, main_dev);
     class_unregister(CryptClass);
