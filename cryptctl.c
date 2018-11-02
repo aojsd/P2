@@ -20,8 +20,8 @@ MODULE_DESCRIPTION("OS Assignment 2: Encrypt/Decrypt Pseudo-Device Driver");
 typedef struct cryptPair{
     int id;
     unsigned int key_length;
-    struct cdev encrypt;
-    struct cdev decrypt;
+    struct cdev dev_encrypt;
+    struct cdev dev_decrypt;
     struct list_head plist;
     char key[KEY_MAX];
 } c_pair;
@@ -34,9 +34,15 @@ int ctlOpen = 0;            // checks whether cryptctl is open or not (basic syn
 int pair_ID = 0;            // moves to next pair ID when creating encrypt/decrypt pairs
 LIST_HEAD(pair_list);       // kernel implementation of circular linked list
 
-int pair_open(struct inode *inode, struct file *filp){
+int e_open(struct inode *inode, struct file *filp){
     // make it easier to find the key for encryption and decryption
-    filp->private_data = container_of(inode->i_cdev, c_pair, cdev);
+    filp->private_data = container_of(inode->i_cdev, c_pair, dev_encrypt);
+    return 0;
+}
+
+int d_open(struct inode *inode, struct file *filp){
+    // make it easier to find the key for encryption and decryption
+    filp->private_data = container_of(inode->i_cdev, c_pair, dev_decrypt);
     return 0;
 }
 
@@ -69,21 +75,39 @@ ssize_t encrypt(struct file *filp, char __user *buff, size_t count, loff_t *offp
 }
 
 ssize_t decrypt(struct file *filp, char __user *buff, size_t count, loff_t *offp){
+    // access device information
     c_pair *cpair = filp->private_data;
+
+    // copy message to be encrypted from userspace
+    char* msg = (char*)kmalloc((int) count, GFP_KERNEL);
+    copy_from_user(msg, buff, count);
+
+    // decrypt message
+    int i; char keyChar;
+    for(i = 0; i < count; i++){
+        keyChar = cpair->key[i % cpair->key_length];
+        msg[i] = (msg[i] - ' ' - keyChar + 2*LETTERS) % LETTERS;
+    }
+
+    // copy message back into userspace
+    copy_to_user(buff, msg, count);
+
+    // free allocated memory
+    kfree(msg);
 
     return count;
 }
 
 // file operations for encryption drivers
 struct file_operations e_fops = {
-    .open = pair_open,
+    .open = e_open,
     .read = encrypt,
     .release = pair_release,
 };
 
 // file operations for decryption drivers
 struct file_operations d_fops = {
-    .open = pair_open,
+    .open = d_open,
     .read = decrypt,
     .release = pair_release,
 };
