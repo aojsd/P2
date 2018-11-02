@@ -62,7 +62,7 @@ int pair_release(struct inode *inode, struct file *filp){
 ssize_t encrypt(struct file *filp, char __user *buff, size_t count, loff_t *offp){
     size_t i;
     char keyChar;
-    c_pair *pair;
+    c_pair *cpair;
     char *msg;
 
     // access device information
@@ -91,7 +91,7 @@ ssize_t encrypt(struct file *filp, char __user *buff, size_t count, loff_t *offp
 ssize_t decrypt(struct file *filp, char __user *buff, size_t count, loff_t *offp){
     size_t i;
     char keyChar;
-    c_pair *pair;
+    c_pair *cpair;
     char *msg;
     
     // access device information
@@ -310,15 +310,16 @@ static int __init cryptctl_init(void){
 }
 
 void cleanup(void){                 // delete any remaining device pairs
-    // hit every item of list
     c_pair *pair;
+    dev_t e_dev, d_dev;
+    
+    // hit every item of list
     while(!list_empty(&pair_list)){
         pair = list_first_entry(&pair_list, c_pair, plist);
 
         list_del(&pair->plist);    // remove pair from list
 
         // delete drivers from kernel
-        dev_t e_dev, d_dev;
         e_dev = pair->dev_encrypt.dev;
         d_dev = pair->dev_decrypt.dev;
 
