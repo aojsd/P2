@@ -132,14 +132,11 @@ struct file_operations d_fops = {
 
 // open function for cryptctl
 int ctl_open(struct inode *inode, struct file *filp){
-    if(ctlOpen > 0);
-    ctlOpen++;
     return 0;
 }
 
 // release function for cryptctl
 int ctl_release(struct inode *inode, struct file *filp){
-    ctlOpen--;
     return 0;
 }
 
@@ -162,7 +159,7 @@ long create_driver(char* key){
     d_dev = MKDEV(crypt_major, 2*pair_ID);
 
     deviceID = "XX";                                  // make device names
-    sprintf(deviceID, "%d%d", pair_ID / 10, pair_ID % 10);
+    sprintf(deviceID, "%d", pair_ID);
     e_name[12] = deviceID[0]; e_name[13] = deviceID[1];
     d_name[12] = deviceID[0]; d_name[13] = deviceID[1];
 
