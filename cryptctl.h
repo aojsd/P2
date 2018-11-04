@@ -5,6 +5,7 @@
 
 #define KEY_MAX 256
 #define LETTERS 95
+
 #define encrypt_name "cryptEncrypt"
 #define decrypt_name "cryptDecrypt"
 

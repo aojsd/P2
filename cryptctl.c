@@ -170,8 +170,8 @@ long create_driver(char* key){
 
     printk("e_name = %s\nd_name = %s\n", e_name, d_name);
 
-    register_chrdev_region(e_dev, 1, (const char*)e_name);       // register device numbers
-    register_chrdev_region(d_dev, 1, (const char*)d_name);
+    register_chrdev_region(e_dev, 1, e_name);       // register device numbers
+    register_chrdev_region(d_dev, 1, d_name);
 
     printk("device numbers registered\n");
     
