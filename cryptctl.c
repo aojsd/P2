@@ -142,6 +142,7 @@ int ctl_release(struct inode *inode, struct file *filp){
 
 // called by ioctl, creates encrypt and decrypt drivers with the given key
 long create_driver(char* key){
+    printk(KERN_DEBUG "Create driver hit\n");
     dev_t e_dev, d_dev;
     c_pair *pair;
     char *deviceID;
@@ -159,14 +160,15 @@ long create_driver(char* key){
     d_dev = MKDEV(crypt_major, 2*pair_ID);
 
     deviceID = "XX";                                  // make device names
-    sprintf(deviceID, "%d", pair_ID);
+    sprintf(deviceID, "%d%d", pair_ID / 10, pair_ID % 10);
     e_name[12] = deviceID[0]; e_name[13] = deviceID[1];
     d_name[12] = deviceID[0]; d_name[13] = deviceID[1];
 
     register_chrdev_region(e_dev, 1, e_name);       // register device numbers
     register_chrdev_region(d_dev, 1, d_name);
     
-    device_create(CryptClass, NULL, e_dev, NULL, e_name);   // create device nodes
+    if(device_create(CryptClass, NULL, e_dev, NULL, e_name) == NULL)   // create device nodes
+        printk(KERN_NOTICE "Failed to create device\n");
     device_create(CryptClass, NULL, d_dev, NULL, d_name);
 
     cdev_init(&pair->dev_encrypt, &e_fops);         // initialize character drivers
@@ -233,6 +235,7 @@ long change_key(id_key *change){
 
 // ioctl function for cryptctl
 long ctl_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
+    printk(KERN_DEBUG "Ioctl hit\n");
     id_key change;
     char key[KEY_MAX];
     int del;
