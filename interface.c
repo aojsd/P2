@@ -105,8 +105,8 @@ int main(int argc, char** argv){
             return -1;
         }
 
-        deviceID = "XX";
-        sprintf(deviceID, "%d%d", pair_ID / 10, pair_ID % 10);
+        char *deviceID = "XX";
+        sprintf(deviceID, "%d%d", id / 10, id % 10);
         if(argv[1][0] == '3'){
             e_name[17] = deviceID[0];
             e_name[18] = deviceID[1];
