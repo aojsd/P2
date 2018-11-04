@@ -13,7 +13,8 @@ char *e_name = "/dev/cryptEncryptXX";
 char *d_name = "/dev/cryptDecryptXX";
 
 void create_driver(char* key){
-    ioctl(fd, CTL_CREATE_DRIVER, key);
+    printf("ioctl attempt\n");
+	ioctl(fd, CTL_CREATE_DRIVER, key);
 }
 
 void delete_driver(int driver_id){

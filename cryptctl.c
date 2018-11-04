@@ -36,8 +36,6 @@ int crypt_major;            // major number for all drivers
 int ctlOpen = 0;            // checks whether cryptctl is open or not (basic synchronization)
 int pair_ID = 0;            // moves to next pair ID when creating encrypt/decrypt pairs
 LIST_HEAD(pair_list);       // kernel implementation of circular linked list
-char *e_name = "cryptEncryptXX";
-char *d_name = "cryptDecryptXX";
 
 // open function for encrypt drivers
 int e_open(struct inode *inode, struct file *filp){
@@ -142,11 +140,12 @@ int ctl_release(struct inode *inode, struct file *filp){
 
 // called by ioctl, creates encrypt and decrypt drivers with the given key
 long create_driver(char* key){
-    printk(KERN_DEBUG "Create driver hit\n");
     dev_t e_dev, d_dev;
     c_pair *pair;
-    char *deviceID;
-
+    char deviceID[5];
+    char e_name[20] = "";
+    char d_name[20] = "";
+    
     // dynamically allocate memory for driver pair
     pair = (c_pair*) kmalloc(sizeof(c_pair), GFP_KERNEL);
     
@@ -154,29 +153,39 @@ long create_driver(char* key){
     pair->id = pair_ID++;
     pair->key_length = (unsigned int)strlen(key);
     strcpy(pair->key, key);
+
+    printk("Pair ID works\n");
     
     // create device drivers                  
     e_dev = MKDEV(crypt_major, 2*pair_ID - 1);  // make device major and minor numbers
     d_dev = MKDEV(crypt_major, 2*pair_ID);
 
-    deviceID = "XX";                                  // make device names
-    sprintf(deviceID, "%d%d", pair_ID / 10, pair_ID % 10);
-    e_name[12] = deviceID[0]; e_name[13] = deviceID[1];
-    d_name[12] = deviceID[0]; d_name[13] = deviceID[1];
+    printk("create major and minor numbers works\n");
 
-    register_chrdev_region(e_dev, 1, e_name);       // register device numbers
-    register_chrdev_region(d_dev, 1, d_name);
+    sprintf(deviceID, "%d", pair->id);			// make device node names
+    strcat(e_name, encrypt_name);
+    strcat(d_name, decrypt_name);
+    strcat(e_name, deviceID);
+    strcat(d_name, deviceID);
+
+    printk("e_name = %s\nd_name = %s\n", e_name, d_name);
+
+    register_chrdev_region(e_dev, 1, (const char*)e_name);       // register device numbers
+    register_chrdev_region(d_dev, 1, (const char*)d_name);
+
+    printk("device numbers registered\n");
     
-    if(device_create(CryptClass, NULL, e_dev, NULL, e_name) == NULL)   // create device nodes
-        printk(KERN_NOTICE "Failed to create device\n");
+    device_create(CryptClass, NULL, e_dev, NULL, e_name);   // create device nodes
     device_create(CryptClass, NULL, d_dev, NULL, d_name);
+
+    printk("device nodes created\n");
 
     cdev_init(&pair->dev_encrypt, &e_fops);         // initialize character drivers
     cdev_init(&pair->dev_decrypt, &d_fops);
 
     cdev_add(&pair->dev_encrypt, e_dev, 1);         // make drivers visible to kernel
     cdev_add(&pair->dev_decrypt, d_dev, 1);
-
+	
     // init list_head and add to linked list
     INIT_LIST_HEAD(&pair->plist);
     list_add(&pair->plist, &pair_list);
