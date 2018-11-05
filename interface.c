@@ -9,8 +9,8 @@
 #include "cryptctl.h"
 
 int fd;
-char *e_name = "/dev/cryptEncryptXX";
-char *d_name = "/dev/cryptDecryptXX";
+char *e_name = "/dev/cryptEncrypt";
+char *d_name = "/dev/cryptDecrypt";
 
 void create_driver(char* key){
     ioctl(fd, CTL_CREATE_DRIVER, key);
@@ -104,6 +104,7 @@ int main(int argc, char** argv){
         }
         int id = atoi(argv[2]);
         char *msg = argv[3];
+	char filename[22] = "";
 
         if(id < 0){
             printf("Error: Invalid arguments\n");
@@ -114,19 +115,17 @@ int main(int argc, char** argv){
         sprintf(deviceID, "%d%d", id / 10, id % 10);
         if(argv[1][0] == '3'){
             // encrypt
-            e_name[17] = deviceID[0];
-            e_name[18] = deviceID[1];
-            fd = open(e_name, O_RDWR);
+            strcat(filename, e_name);
+	    strcat(filename, deviceID);
             printf("%s encrypted to: ", msg);
         }
         else{
             // decrypt
-            d_name[17] = deviceID[0];
-            d_name[18] = deviceID[2];
-            fd = open(d_name, O_RDWR);
+            strcat(filename, d_name);
+	    strcat(filename, deviceID);
             printf("%s decrypted to: ", msg);
         }
-
+	fd = open(filename, O_RDWR);
         crypt(id, msg);
         printf("%s\n", msg);
         close(fd);
