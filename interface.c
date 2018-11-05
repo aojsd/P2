@@ -49,7 +49,7 @@ int main(int argc, char** argv){
     // 2 - change key, order is id then key
     // 3 - decrypt message
     // 4 - encrypt message
-    if(argv[1][0] == '0'){
+    if(argv[1][0] == '0'){  // create driver
         if(argc != 3){
             printf("Error: Invalid arguments\n");
             return -1;
@@ -58,8 +58,9 @@ int main(int argc, char** argv){
         fd = open("/dev/cryptctl", O_RDWR);
         create_driver(key);
         close(fd);
-    }
-    else if(argv[1][0] == '1'){
+        printf("Driver pair created with key: %s\n", key);
+    }  
+    else if(argv[1][0] == '1'){ // delete driver
         if(argc != 3){
             printf("Error: Invalid arguments\n");
             return -1;
@@ -74,8 +75,10 @@ int main(int argc, char** argv){
         fd = open("/dev/cryptctl", O_RDWR);
         delete_driver(id);
         close(fd);
+
+        printf("Driver pair %d deleted\n", id);
     }
-    else if(argv[1][0] == '2'){
+    else if(argv[1][0] == '2'){ // change key
         if(argc != 4){
             printf("Error: Invalid arguments\n");
             return -1;
@@ -91,9 +94,11 @@ int main(int argc, char** argv){
         fd = open("/dev/cryptctl", O_RDWR);
         change_key(id, key);
         close(fd);
+        printf("Driver pair %d key changed to: %s\n", id, key);
     }
     else if(argv[1][0] == '3' || argv[1][0] == '4'){
-        if(argc != 4){
+        // encrypt or decrypt
+        if(argc != 4){ 
             printf("Error: Invalid arguments\n");
             return -1;
         }
@@ -105,20 +110,25 @@ int main(int argc, char** argv){
             return -1;
         }
 
-        char *deviceID = "XX";
+        char deviceID[3];
         sprintf(deviceID, "%d%d", id / 10, id % 10);
         if(argv[1][0] == '3'){
+            // encrypt
             e_name[17] = deviceID[0];
             e_name[18] = deviceID[1];
             fd = open(e_name, O_RDWR);
+            printf("%s encrypted to: ", msg);
         }
         else{
+            // decrypt
             d_name[17] = deviceID[0];
             d_name[18] = deviceID[2];
             fd = open(d_name, O_RDWR);
+            printf("%s decrypted to: ", msg);
         }
 
         crypt(id, msg);
+        printf("%s\n", msg);
         close(fd);
     }
 

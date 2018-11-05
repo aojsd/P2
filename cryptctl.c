@@ -102,7 +102,10 @@ ssize_t decrypt(struct file *filp, char __user *buff, size_t count, loff_t *offp
     // decrypt message
     for(i = 0; i < count; i++){
         keyChar = cpair->key[i % cpair->key_length];
-        msg[i] = (msg[i] - ' ' - keyChar + 2*LETTERS) % LETTERS;
+        msg[i] -= ' ' + keyChar;
+        while(msg[i] < ' '){
+            msg[i] += LETTERS;
+        }
     }
 
     // copy message back into userspace
@@ -154,13 +157,9 @@ long create_driver(char* key){
     pair->key_length = (unsigned int)strlen(key);
     strcpy(pair->key, key);
 
-    printk("Pair ID works\n");
-    
     // create device drivers                  
     e_dev = MKDEV(crypt_major, 2*pair_ID - 1);  // make device major and minor numbers
     d_dev = MKDEV(crypt_major, 2*pair_ID);
-
-    printk("create major and minor numbers works\n");
 
     sprintf(deviceID, "%d", pair->id);			// make device node names
     strcat(e_name, encrypt_name);
@@ -168,17 +167,11 @@ long create_driver(char* key){
     strcat(e_name, deviceID);
     strcat(d_name, deviceID);
 
-    printk("e_name = %s\nd_name = %s\n", e_name, d_name);
-
     register_chrdev_region(e_dev, 1, e_name);       // register device numbers
     register_chrdev_region(d_dev, 1, d_name);
-
-    printk("device numbers registered\n");
     
     device_create(CryptClass, NULL, e_dev, NULL, e_name);   // create device nodes
     device_create(CryptClass, NULL, d_dev, NULL, d_name);
-
-    printk("device nodes created\n");
 
     cdev_init(&pair->dev_encrypt, &e_fops);         // initialize character drivers
     cdev_init(&pair->dev_decrypt, &d_fops);
@@ -244,7 +237,6 @@ long change_key(id_key *change){
 
 // ioctl function for cryptctl
 long ctl_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
-    printk(KERN_DEBUG "Ioctl hit\n");
     id_key change;
     char key[KEY_MAX];
     int del;
