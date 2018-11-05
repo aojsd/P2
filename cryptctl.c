@@ -226,8 +226,12 @@ long change_key(id_key *change){
             break;
     }
 
+    printk("Original key: %s\n", pair->key);
+
     // update key
     strcpy(pair->key, change->key);
+
+    printk("New key: %s\n", pair->key);
 
     // update key_length
     pair->key_length = change->key_length;
@@ -240,6 +244,8 @@ long ctl_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
     id_key change;
     char key[KEY_MAX];
     int del;
+
+    printk("ioctl reached\n");
 
     switch(cmd){
         case CTL_CREATE_DRIVER: // parameter is key, return driver ID

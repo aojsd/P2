@@ -112,22 +112,23 @@ int main(int argc, char** argv){
         }
 
         char deviceID[3];
-        sprintf(deviceID, "%d%d", id / 10, id % 10);
+        sprintf(deviceID, "%d", id);
         if(argv[1][0] == '3'){
             // encrypt
             strcat(filename, e_name);
 	    strcat(filename, deviceID);
-            printf("%s encrypted to: ", msg);
+            printf("%s encrypted as: ", msg);
         }
         else{
             // decrypt
             strcat(filename, d_name);
 	    strcat(filename, deviceID);
             printf("%s decrypted to: ", msg);
-        }
+	}
 	fd = open(filename, O_RDWR);
         crypt(id, msg);
         printf("%s\n", msg);
+
         close(fd);
     }
 
