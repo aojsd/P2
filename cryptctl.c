@@ -73,7 +73,7 @@ ssize_t encrypt(struct file *filp, char __user *buff, size_t count, loff_t *offp
     // encrypt message
     for(i = 0; i < count; i++){
         keyChar = cpair->key[i % cpair->key_length];
-        msg[i] = ' ' + (msg[i] + keyChar) % LETTERS;
+        msg[i] = ' ' + (msg[i] - ' ' + keyChar - ' ') % LETTERS;
     }
 
     // copy message back into userspace
@@ -102,10 +102,7 @@ ssize_t decrypt(struct file *filp, char __user *buff, size_t count, loff_t *offp
     // decrypt message
     for(i = 0; i < count; i++){
         keyChar = cpair->key[i % cpair->key_length];
-        msg[i] -= ' ' + keyChar;
-        while(msg[i] < ' '){
-            msg[i] += LETTERS;
-        }
+        msg[i] = ' ' + (msg[i] - keyChar + LETTERS) % LETTERS;
     }
 
     // copy message back into userspace
