@@ -12,8 +12,8 @@ int fd;
 char *e_name = "/dev/cryptEncrypt";
 char *d_name = "/dev/cryptDecrypt";
 
-void create_driver(char* key){
-    ioctl(fd, CTL_CREATE_DRIVER, key);
+long create_driver(char* key){
+    return ioctl(fd, CTL_CREATE_DRIVER, key);
 }
 
 void delete_driver(int driver_id){
@@ -55,10 +55,11 @@ int main(int argc, char** argv){
             return -1;
         }
         char *key = argv[2];
+        long id;
         fd = open("/dev/cryptctl", O_RDWR);
-        create_driver(key);
+        id = create_driver(key);
         close(fd);
-        printf("Driver pair created with key: %s\n", key);
+        printf("Driver pair created\nID: %ld\nKey: %s\n", id, key);
     }  
     else if(argv[1][0] == '1'){ // delete driver
         if(argc != 3){

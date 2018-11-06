@@ -33,7 +33,6 @@ dev_t main_dev;             // major and minor numbers of the ctl driver
 struct cdev cryptctl;       // ctl driver
 struct class *CryptClass;   // class for all drivers
 int crypt_major;            // major number for all drivers
-int ctlOpen = 0;            // checks whether cryptctl is open or not (basic synchronization)
 int pair_ID = 0;            // moves to next pair ID when creating encrypt/decrypt pairs
 LIST_HEAD(pair_list);       // kernel implementation of circular linked list
 
@@ -180,7 +179,7 @@ long create_driver(char* key){
     INIT_LIST_HEAD(&pair->plist);
     list_add(&pair->plist, &pair_list);
     
-    return 0;
+    return (long) pair->id;
 }
 
 // called by ioctl, deletes driver pair of a given ID
